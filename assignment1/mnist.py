@@ -47,16 +47,17 @@ def extract_mnist():
             print(data.shape)
             mnist[name[0]] = data
     with open(save_path, 'wb') as f:
-        pickle.dump(mnist,f)
+        pickle.dump(mnist, f)
 
 
 def load():
     download_mnist()
     extract_mnist()
     dataset_path = SAVE_PATH.joinpath("mnist.pkl")
-    with open(dataset_path,'rb') as f:
+    with open(dataset_path, 'rb') as f:
         mnist = pickle.load(f)
     return mnist["training_images"], mnist["training_labels"], mnist["test_images"], mnist["test_labels"]
+
 
 if __name__ == '__main__':
     init()

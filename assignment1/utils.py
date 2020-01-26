@@ -30,10 +30,10 @@ def train_val_split(X: np.ndarray, Y: np.ndarray, val_percentage: float):
     train_size = int(X.shape[0] * (1 - val_percentage))
     idx_train = idx[:train_size]
     idx_val = idx[train_size:]
-    #print(len(idx_train), len(idx_val))
+
     X_train, Y_train = X[idx_train], Y[idx_train]
     X_val, Y_val = X[idx_val], Y[idx_val]
-    #print(len(X_val))
+
     return X_train, Y_train, X_val, Y_val
 
 
@@ -97,8 +97,8 @@ def plot_loss(loss_dict: dict, label: str = None):
     """
     Args:
         loss_dict: a dictionary where keys are the global step and values are the given loss / accuracy
+        label: a string to use as label in plot legend
     """
     global_steps = list(loss_dict.keys())
     loss = list(loss_dict.values())
     plt.plot(global_steps, loss, label=label)
-

@@ -7,12 +7,13 @@ np.random.seed(1)
 def cross_entropy_loss(targets: np.ndarray, outputs: np.ndarray):
     """
     Args:
-        outputs: outputs of model of shape: [batch size, num_classes]
         targets: labels/targets of each image of shape: [batch size, num_classes]
+        outputs: outputs of model of shape: [batch size, num_classes]
     Returns:
         Cross entropy error (float)
     """
-    assert targets.shape == outputs.shape
+    assert targets.shape == outputs.shape,\
+        f"Targets shape: {targets.shape}, outputs: {outputs.shape}"
     ce = targets * np.log(outputs)
     raise NotImplementedError
 
@@ -49,7 +50,8 @@ class SoftmaxModel:
         assert targets.shape == outputs.shape,\
             f"Output shape: {outputs.shape}, targets: {targets.shape}"
         self.grad = np.zeros_like(self.w)
-        assert self.grad.shape == self.w.shape
+        assert self.grad.shape == self.w.shape,\
+             f"Grad shape: {self.grad.shape}, w: {self.w.shape}"
 
     def zero_grad(self) -> None:
         self.grad = None
@@ -71,7 +73,7 @@ def gradient_approximation_test(model: SoftmaxModel, X: np.ndarray, Y: np.ndarra
         Numerical approximation for gradients. Should not be edited. 
         Details about this test is given in the appendix in the assignment.
     """
-    epsilon = 10e-2
+    epsilon = 1e-2
     for i in range(model.w.shape[0]):
         for j in range(model.w.shape[1]):    
             orig = model.w[i, j].copy()
@@ -88,8 +90,10 @@ def gradient_approximation_test(model: SoftmaxModel, X: np.ndarray, Y: np.ndarra
             model.backward(X, logits, Y)
             difference = gradient_approximation - model.grad[i, j]
             assert abs(difference) <= epsilon**2,\
-                f"Calculated gradient is incorrect. Approximation: {gradient_approximation}, actual gradient: {model.grad[i,0]}"\
-                f"If this test fails there could be errors in your cross entropy loss function, forward function or backward function"
+                f"Calculated gradient is incorrect. " \
+                f"Approximation: {gradient_approximation}, actual gradient: {model.grad[i, j]}\n" \
+                f"If this test fails there could be errors in your cross entropy loss function, " \
+                f"forward function or backward function"
 
 
 if __name__ == "__main__":
@@ -119,5 +123,3 @@ if __name__ == "__main__":
     for i in range(2):
         gradient_approximation_test(model, X_train, Y_train)
         model.w = np.random.randn(*model.w.shape)
-
-    

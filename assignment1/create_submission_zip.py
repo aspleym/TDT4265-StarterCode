@@ -7,6 +7,7 @@ files_to_include = [
     "task4.py",
     "task4a.py",
     "utils.py",
+    "mnist.py"
 ]
 
 for filepath in files_to_include:

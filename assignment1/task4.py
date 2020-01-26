@@ -6,14 +6,12 @@ from task4a import cross_entropy_loss, SoftmaxModel, one_hot_encode
 np.random.seed(0)
 
 
-
-
 def calculate_accuracy(X: np.ndarray, targets: np.ndarray, model: SoftmaxModel) -> float: 
     """
     Args:
         X: images of shape [batch size, 785]
-        outputs: outputs of model of shape: [batch size, 10]
         targets: labels/targets of each image of shape: [batch size, 10]
+        model: model of class SoftmaxModel
     Returns:
         Accuracy (float)
     """
@@ -113,5 +111,3 @@ utils.plot_loss(train_accuracy, "Training Accuracy")
 utils.plot_loss(val_accuracy, "Validation Accuracy")
 plt.legend()
 plt.show()
-
-
