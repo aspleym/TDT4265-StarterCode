@@ -5,7 +5,7 @@ from task2a import cross_entropy_loss, BinaryModel, pre_process_images
 np.random.seed(0)
 
 
-def calculate_accuracy(X: np.ndarray, targets: np.ndarray, model: BinaryModel) -> float: 
+def calculate_accuracy(X: np.ndarray, targets: np.ndarray, model: BinaryModel) -> float:
     """
     Args:
         X: images of shape [batch size, 785]
@@ -46,16 +46,17 @@ def train(
             start = step * batch_size
             end = start + batch_size
             X_batch, Y_batch = X_train[start:end], Y_train[start:end]
-
-
+            logits = model.forward(X_batch)
+            model.backward(X_batch, logits, Y_batch)
+            model.update_weights(learning_rate)
             # Track training loss continuously
-            _train_loss = 0
+            _train_loss = cross_entropy_loss(Y_batch, logits)
             train_loss[global_step] = _train_loss
             # Track validation loss / accuracy every time we progress 20% through the dataset
             if global_step % num_steps_per_val == 0:
-                _val_loss = 0
+                val_logits = model.forward(X_val)
+                _val_loss = cross_entropy_loss(Y_val, val_logits)
                 val_loss[global_step] = _val_loss
-
                 train_accuracy[global_step] = calculate_accuracy(
                     X_train, Y_train, model)
                 val_accuracy[global_step] = calculate_accuracy(
@@ -70,8 +71,12 @@ category1, category2 = 2, 3
 validation_percentage = 0.1
 X_train, Y_train, X_val, Y_val, X_test, Y_test = utils.load_binary_dataset(
     category1, category2, validation_percentage)
+# Preprocessing images
+X_train = pre_process_images(X_train)
+X_val = pre_process_images(X_val)
+X_test = pre_process_images(X_test)
 
-# hyperparameters
+# Hyperparameters
 num_epochs = 50
 learning_rate = 0.2
 batch_size = 128
@@ -96,7 +101,7 @@ print("Test accuracy:", calculate_accuracy(X_test, Y_test, model))
 
 
 # Plot loss
-#plt.ylim([0., .4]) 
+# plt.ylim([0., .4])
 utils.plot_loss(train_loss, "Training Loss")
 utils.plot_loss(val_loss, "Validation Loss")
 plt.legend()

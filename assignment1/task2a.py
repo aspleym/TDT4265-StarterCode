@@ -12,6 +12,10 @@ def pre_process_images(X: np.ndarray):
     """
     assert X.shape[1] == 784,\
         f"X.shape[1]: {X.shape[1]}, should be 784"
+
+    X = np.divide(X, 255.0)
+    X = np.insert(X, X.shape[1], 1, axis=1)
+
     return X
 
 
@@ -25,20 +29,24 @@ def cross_entropy_loss(targets: np.ndarray, outputs: np.ndarray) -> float:
     """
     assert targets.shape == outputs.shape,\
         f"Targets shape: {targets.shape}, outputs: {outputs.shape}"
-    return 0
+
+    xent_loss = -((targets*np.log(outputs) + (1-targets)*np.log(1-outputs)))
+    xent_loss = np.sum(xent_loss)/float(targets.shape[0])
+
+    return xent_loss
 
 
 class BinaryModel:
 
     def __init__(self, l2_reg_lambda: float):
         # Define number of input nodes
-        self.I = None
+        self.I = 785
         self.w = np.zeros((self.I, 1))
         self.grad = None
 
         # Hyperparameter for task 3
         self.l2_reg_lambda = l2_reg_lambda
-    
+
     def forward(self, X: np.ndarray) -> np.ndarray:
         """
         Args:
@@ -47,7 +55,12 @@ class BinaryModel:
             y: output of model with shape [batch size, 1]
         """
         # Sigmoid
-        return None
+        sigmoid = lambda xw: 1.0/(1 + np.exp(-xw))
+        # Calculating the product of inputs and weights
+        z = X.dot(self.w)
+        # Applying the sigmoid function.
+        y = sigmoid(z)
+        return y
 
     def backward(self, X: np.ndarray, outputs: np.ndarray, targets: np.ndarray) -> None:
         """
@@ -56,19 +69,25 @@ class BinaryModel:
             outputs: outputs of model of shape: [batch size, 1]
             targets: labels/targets of each image of shape: [batch size, 1]
         """
+
         assert targets.shape == outputs.shape,\
             f"Output shape: {outputs.shape}, targets: {targets.shape}"
         self.grad = np.zeros_like(self.w)
         assert self.grad.shape == self.w.shape,\
             f"Grad shape: {self.grad.shape}, w: {self.w.shape}"
 
+        self.grad = X.T.dot(-(targets-outputs))/float(X.shape[0])
+
     def zero_grad(self) -> None:
         self.grad = None
+
+    def update_weights(self, learning_rate):
+        self.w -= learning_rate*self.grad
 
 
 def gradient_approximation_test(model: BinaryModel, X: np.ndarray, Y: np.ndarray):
     """
-        Numerical approximation for gradients. Should not be edited. 
+        Numerical approximation for gradients. Should not be edited.
         Details about this test is given in the appendix in the assignment.
     """
     w_orig = model.w.copy()
