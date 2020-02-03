@@ -85,9 +85,9 @@ model, train_loss, val_loss, train_accuracy, val_accuracy = train(
 
 print("Final Train Cross Entropy Loss:",
       cross_entropy_loss(Y_train, model.forward(X_train)))
-print("Final Validation Cross Entropy Loss:",
+print("Final  Test Entropy Loss:",
       cross_entropy_loss(Y_test, model.forward(X_test)))
-print("Final Test Cross Entropy Loss:",
+print("Final Validation Cross Entropy Loss:",
       cross_entropy_loss(Y_val, model.forward(X_val)))
 
 
