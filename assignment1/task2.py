@@ -34,6 +34,7 @@ def train(
     """
     global X_train, X_val, X_test
     # Utility variables
+    stop_training = False
     num_batches_per_epoch = X_train.shape[0] // batch_size
     num_steps_per_val = num_batches_per_epoch // 5
     train_loss = {}
@@ -41,6 +42,7 @@ def train(
     train_accuracy = {}
     val_accuracy = {}
     model = BinaryModel(l2_reg_lambda)
+    n_last_val_losses = np.ones(10)
 
     global_step = 0
     for epoch in range(num_epochs):
@@ -65,7 +67,19 @@ def train(
                 val_accuracy[global_step] = calculate_accuracy(
                     X_val, Y_val, model)
 
+                n_last_val_losses = np.append(n_last_val_losses[1:], _val_loss.copy())
+
+                # Early stopping
+                if(np.mean(np.diff(n_last_val_losses)) > 0.01):
+                    stop_training = True
+                    break
+
             global_step += 1
+
+        # Early stopping brakig outer loop
+        if(stop_training):
+            break
+
     return model, train_loss, val_loss, train_accuracy, val_accuracy
 
 
@@ -80,42 +94,65 @@ X_val = pre_process_images(X_val)
 X_test = pre_process_images(X_test)
 
 # Hyperparameters
-num_epochs = 50
+num_epochs = 500
 learning_rate = 0.2
 batch_size = 128
-l2_reg_lambda = 0
-model, train_loss, val_loss, train_accuracy, val_accuracy = train(
-    num_epochs=num_epochs,
-    learning_rate=learning_rate,
-    batch_size=batch_size,
-    l2_reg_lambda=l2_reg_lambda)
+l2_reg_lambda = [1.0, 0.1, 0.01, 0.001]
 
-print("Final Train Cross Entropy Loss:",
+fig = plt.figure(figsize=(9, 3))
+count = 1
+
+for l2 in l2_reg_lambda:
+    model, train_loss, val_loss, train_accuracy, val_accuracy = train(
+        num_epochs=num_epochs,
+        learning_rate=learning_rate,
+        batch_size=batch_size,
+        l2_reg_lambda=l2)
+
+
+    print("Final Train Cross Entropy Loss:",
       cross_entropy_loss(Y_train, model.forward(X_train)))
-print("Final  Test Entropy Loss:",
-      cross_entropy_loss(Y_test, model.forward(X_test)))
-print("Final Validation Cross Entropy Loss:",
-      cross_entropy_loss(Y_val, model.forward(X_val)))
+
+    print("Final Validation Cross Entropy Loss:",
+         cross_entropy_loss(Y_test, model.forward(X_test)))
+    print("Final Test Cross Entropy Loss:",
+         cross_entropy_loss(Y_val, model.forward(X_val)))
 
 
-print("Train accuracy:", calculate_accuracy(X_train, Y_train, model))
-print("Validation accuracy:", calculate_accuracy(X_val, Y_val, model))
-print("Test accuracy:", calculate_accuracy(X_test, Y_test, model))
+    print("Train accuracy:", calculate_accuracy(X_train, Y_train, model))
+    print("Validation accuracy:", calculate_accuracy(X_val, Y_val, model))
+    print("Test accuracy:", calculate_accuracy(X_test, Y_test, model))
+
+    #plotting validation loss:
+    #utils.plot_loss(val_loss, "Validation Loss" + str(l2))
+
+    #plotting l2 norm
+    l2_norm = np.dot(model.w.T, model.w)
+    im = model.w[:-1].reshape(28,28)
+    fig.add_subplot(1, 4, count)
+    plt.imshow(im)
+    count += 1
+
+plt.legend()
+#plt.ylim([0., .4])
+plt.savefig("weights.png")
+plt.show()
+
 
 
 # Plot loss
-# plt.ylim([0., .4])
-utils.plot_loss(train_loss, "Training Loss")
-utils.plot_loss(val_loss, "Validation Loss")
-plt.legend()
-plt.savefig("binary_train_loss.png")
-plt.show()
+#plt.ylim([0., .4])
+#utils.plot_loss(train_loss, "Training Loss")
+#utils.plot_loss(val_loss, "Validation Loss")
+#plt.legend()
+#plt.savefig("binary_train_loss.png")
+#plt.show()
 
 
 # Plot accuracy
 #plt.ylim([0.93, .99])
-utils.plot_loss(train_accuracy, "Training Accuracy")
-utils.plot_loss(val_accuracy, "Validation Accuracy")
-plt.legend()
-plt.savefig("binary_train_accuracy.png")
-plt.show()
+#utils.plot_loss(train_accuracy, "Training Accuracy")
+#utils.plot_loss(val_accuracy, "Validation Accuracy")
+#plt.legend()
+#plt.savefig("binary_train_accuracy.png")
+#plt.show()

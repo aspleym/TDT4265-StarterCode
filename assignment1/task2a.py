@@ -76,7 +76,7 @@ class BinaryModel:
         assert self.grad.shape == self.w.shape,\
             f"Grad shape: {self.grad.shape}, w: {self.w.shape}"
 
-        self.grad = X.T.dot(-(targets-outputs))/float(X.shape[0])
+        self.grad = (np.dot(X.T, -(targets-outputs)))/X.shape[0] + np.dot(2*self.l2_reg_lambda, self.w)
 
     def zero_grad(self) -> None:
         self.grad = None
