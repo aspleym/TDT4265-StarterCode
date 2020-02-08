@@ -16,7 +16,10 @@ def calculate_accuracy(X: np.ndarray, targets: np.ndarray, model: BinaryModel) -
     """
     # Task 2c
     accuracy = 0.0
+    logits = model.forward(X)
+    accuracy = (np.count_nonzero(np.abs(logits-targets) < 0.5))/X.shape[0]
     return accuracy
+
 
 
 def train(

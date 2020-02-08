@@ -1,0 +1,20 @@
+STD depends on some part of the network, number of neurons going in to the layer is used for
+the standard diviation of the normal distribution.
+
+Optimalization:
+
+Mini-batch
+    many steps/oscillates
+
+Graditent descent with momentum/momentum optimizer
+    speeds up optimization of the cost function
+    Moving average:
+        used to update the trainable parameters of the network
+RMS prop
+    Root-mean-square propagation
+ADAM:
+    Adaptive momentum
+    Combines the momentum and RMS prop in a single approach.
+
+Transfer learning (fine tuning)
+    Base models, trained on large datasets

@@ -14,18 +14,17 @@ def cross_entropy_loss(targets: np.ndarray, outputs: np.ndarray):
     """
     assert targets.shape == outputs.shape,\
         f"Targets shape: {targets.shape}, outputs: {outputs.shape}"
-    ce = targets * np.log(outputs)
-    raise NotImplementedError
-
+    xloss = -np.einsum('ij,ij',targets, np.log(outputs))/(targets.shape[0]*targets.shape[1])
+    return xloss
 
 class SoftmaxModel:
 
     def __init__(self, l2_reg_lambda: float):
         # Define number of input nodes
-        self.I = None
+        self.I = 785
 
         # Define number of output nodes
-        self.num_outputs = None
+        self.num_outputs = 10
         self.w = np.zeros((self.I, self.num_outputs))
         self.grad = None
 
@@ -38,7 +37,11 @@ class SoftmaxModel:
         Returns:
             y: output of model with shape [batch size, num_outputs]
         """
-        return None
+
+        softmax = lambda z: np.exp(z)/(np.sum(np.exp(z), axis=1).reshape(-1, 1))
+        z = X.dot(self.w)
+        y = softmax(z)
+        return y
 
     def backward(self, X: np.ndarray, outputs: np.ndarray, targets: np.ndarray) -> None:
         """
@@ -53,6 +56,8 @@ class SoftmaxModel:
         assert self.grad.shape == self.w.shape,\
              f"Grad shape: {self.grad.shape}, w: {self.w.shape}"
 
+        self.grad = -(1/self.num_outputs)*X.T.dot((targets-outputs))/(X.shape[0])
+
     def zero_grad(self) -> None:
         self.grad = None
 
@@ -65,17 +70,23 @@ def one_hot_encode(Y: np.ndarray, num_classes: int):
     Returns:
         Y: shape [Num examples, num classes]
     """
-    raise NotImplementedError
+
+    # initializing an array of zeros with the right dimentions
+    one_hot_Y = np.zeros((Y.shape[0], num_classes), dtype=int)
+    # using arrange to set the right entries to one.
+    one_hot_Y[np.arange(Y.shape[0]), Y[:,0]] = 1
+
+    return one_hot_Y
 
 
 def gradient_approximation_test(model: SoftmaxModel, X: np.ndarray, Y: np.ndarray):
     """
-        Numerical approximation for gradients. Should not be edited. 
+        Numerical approximation for gradients. Should not be edited.
         Details about this test is given in the appendix in the assignment.
     """
     epsilon = 1e-2
     for i in range(model.w.shape[0]):
-        for j in range(model.w.shape[1]):    
+        for j in range(model.w.shape[1]):
             orig = model.w[i, j].copy()
             model.w[i, j] = orig + epsilon
             logits = model.forward(X)
@@ -109,7 +120,7 @@ if __name__ == "__main__":
     Y_train = one_hot_encode(Y_train, 10)
     assert X_train.shape[1] == 785,\
         f"Expected X_train to have 785 elements per image. Shape was: {X_train.shape}"
-    
+
     # Simple test for forward pass. Note that this does not cover all errors!
     model = SoftmaxModel(0.0)
     logits = model.forward(X_train)
