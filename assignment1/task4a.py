@@ -56,7 +56,7 @@ class SoftmaxModel:
         assert self.grad.shape == self.w.shape,\
              f"Grad shape: {self.grad.shape}, w: {self.w.shape}"
 
-        self.grad = -(1/self.num_outputs)*X.T.dot((targets-outputs))/(X.shape[0])
+        self.grad = -(1/self.num_outputs)*np.dot(X.T, (targets-outputs))/(X.shape[0])
 
     def zero_grad(self) -> None:
         self.grad = None

@@ -4,7 +4,7 @@ import typing
 np.random.seed(1)
 
 
-def pre_process_images(X: np.ndarray):
+def pre_process_images(X: np.ndarray, mean: float, std: float):
     """
     Args:
         X: images of shape [batch size, 784] in the range (0, 255)
@@ -13,10 +13,14 @@ def pre_process_images(X: np.ndarray):
     """
     assert X.shape[1] == 784,\
         f"X.shape[1]: {X.shape[1]}, should be 784"
+
+    X = (X-mean)/std
+    X = np.insert(X, X.shape[1], 1, axis=1)
+
     return X
 
 
-def cross_entropy_loss(targets: np.ndarray, outputs: np.ndarray):
+def cross_entropy_loss(targets: np.ndarray, outputs: np.ndarray) -> float:
     """
     Args:
         targets: labels/targets of each image of shape: [batch size, num_classes]
@@ -26,7 +30,8 @@ def cross_entropy_loss(targets: np.ndarray, outputs: np.ndarray):
     """
     assert targets.shape == outputs.shape,\
         f"Targets shape: {targets.shape}, outputs: {outputs.shape}"
-    raise NotImplementedError
+    xLoss = -np.einsum('ij,ij',targets, np.log(outputs))/(targets.shape[0])
+    return xLoss
 
 
 class SoftmaxModel:
@@ -38,7 +43,7 @@ class SoftmaxModel:
                  use_improved_weight_init: bool  # Task 3c hyperparameter
                  ):
         # Define number of input nodes
-        self.I = None
+        self.I = 785
         self.use_improved_sigmoid = use_improved_sigmoid
 
         # Define number of output nodes
@@ -64,7 +69,12 @@ class SoftmaxModel:
         Returns:
             y: output of model with shape [batch size, num_outputs]
         """
-        return None
+        sigmoid = lambda z: 1.0/(1 + np.exp(-z))
+        softmax = lambda z: np.exp(z)/(np.sum(np.exp(z), axis=1).reshape(-1, 1))
+        z = np.dot(X, self.ws[0])
+        y = softmax(np.dot(sigmoid(z), self.ws[1]))
+        print(y[0])
+        return y
 
     def backward(self, X: np.ndarray, outputs: np.ndarray,
                  targets: np.ndarray) -> None:
@@ -80,9 +90,19 @@ class SoftmaxModel:
         # For example, self.grads[0] will be the gradient for the first hidden layer
         self.grads = []
 
+        # hidden layer grads
+        self.grad.append((np.dot(X.T, -(targets-outputs)))/(X.shape[0]))
+
+        # output layer grads
+        self.grad.append(-np.dot(X.T, (targets-outputs))/(X.shape[0]))
+
+
         for grad, w in zip(self.grads, self.ws):
             assert grad.shape == w.shape,\
                 f"Expected the same shape. Grad shape: {grad.shape}, w: {w.shape}."
+        assert self.grad.shape == self.w.shape,\
+             f"Grad shape: {self.grad.shape}, w: {self.w.shape}"
+
 
     def zero_grad(self) -> None:
         self.grads = [None for i in range(len(self.ws))]
@@ -96,13 +116,18 @@ def one_hot_encode(Y: np.ndarray, num_classes: int):
     Returns:
         Y: shape [Num examples, num classes]
     """
-    raise NotImplementedError
+    # initializing an array of zeros with the right dimentions
+    one_hot_Y = np.zeros((Y.shape[0], num_classes), dtype=int)
+    # using arrange to set the right entries to one.
+    one_hot_Y[np.arange(Y.shape[0]), Y[:,0]] = 1
+
+    return one_hot_Y
 
 
 def gradient_approximation_test(
         model: SoftmaxModel, X: np.ndarray, Y: np.ndarray):
     """
-        Numerical approximation for gradients. Should not be edited. 
+        Numerical approximation for gradients. Should not be edited.
         Details about this test is given in the appendix in the assignment.
     """
     epsilon = 1e-3
@@ -139,7 +164,10 @@ if __name__ == "__main__":
         f"Expected the vector to be [0,0,0,1,0,0,0,0,0,0], but got {Y}"
 
     X_train, Y_train, *_ = utils.load_full_mnist(0.1)
-    X_train = pre_process_images(X_train)
+    # calculating mean and standard deviation of the training data.
+    Xt_mean = np.mean(X_train)
+    Xt_std = np.std(X_train)
+    X_train = pre_process_images(X_train, Xt_mean, Xt_std)
     Y_train = one_hot_encode(Y_train, 10)
     assert X_train.shape[1] == 785,\
         f"Expected X_train to have 785 elements per image. Shape was: {X_train.shape}"
