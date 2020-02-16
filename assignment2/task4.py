@@ -2,7 +2,7 @@ import numpy as np
 import utils
 import matplotlib.pyplot as plt
 import typing
-from task2a import cross_entropy_loss, SoftmaxModel, one_hot_encode, pre_process_images
+from task4a import cross_entropy_loss, SoftmaxModel, one_hot_encode, pre_process_images
 np.random.seed(0)
 
 
@@ -47,9 +47,6 @@ def train(
     train_accuracy = {}
     val_accuracy = {}
     n_last_val_losses = np.ones(10)
-    # Initializing model weights
-    model.ws[0] = np.random.uniform(-1, 1, model.ws[0].shape)
-    model.ws[1] = np.random.uniform(-1, 1, model.ws[1].shape)
 
     global_step = 0
     for epoch in range(num_epochs):
@@ -61,7 +58,7 @@ def train(
             # forward-pass, backward-pass and update-step
             logits = model.forward(X_batch)
             model.backward(X_batch, logits, Y_batch)
-            model.update_weights(learning_rate)
+            model.update_weights_momentum(learning_rate, momentum_gamma) if use_momentum else model.update_weights(learning_rate)
 
             # Track train / validation loss / accuracy
             # every time we progress 20% through the dataset
@@ -81,9 +78,18 @@ def train(
 
             global_step += 1
         # Track training loss continuously
+        if use_shuffle:
+            shuffle_equal(X_train, Y_train)
         logits = model.forward(X_train)
 
     return model, train_loss, val_loss, train_accuracy, val_accuracy
+
+def shuffle_equal(X:np.ndarray, Y:np.ndarray):
+    state_of_random = np.random.get_state()
+    np.random.shuffle(X)
+    np.random.set_state(state_of_random)
+    np.random.shuffle(Y)
+
 
 
 if __name__ == "__main__":
@@ -105,14 +111,18 @@ if __name__ == "__main__":
     num_epochs = 20
     learning_rate = .1
     batch_size = 32
-    neurons_per_layer = [64, 10]
+    neurons_per_layer = [24, 16, 32, 10]
     momentum_gamma = .9  # Task 3 hyperparameter
 
     # Settings for task 3. Keep all to false for task 2.
-    use_shuffle = False
-    use_improved_sigmoid = False
-    use_improved_weight_init = False
-    use_momentum = False
+    # Adjust range if running all the tricks is not desired.
+    use_shuffle = True
+    use_improved_sigmoid = True
+    use_improved_weight_init = True
+    use_momentum = True
+
+    # lowering the learning rate when using momentum
+    if(use_momentum): learning_rate = 0.02
 
     model = SoftmaxModel(
         neurons_per_layer,
@@ -134,7 +144,6 @@ if __name__ == "__main__":
           cross_entropy_loss(Y_val, model.forward(X_val)))
     print("Final Test Cross Entropy Loss:",
           cross_entropy_loss(Y_test, model.forward(X_test)))
-
     print("Final Train accuracy:",
           calculate_accuracy(X_train, Y_train, model))
     print("Final Validation accuracy:",
@@ -143,21 +152,16 @@ if __name__ == "__main__":
           calculate_accuracy(X_test, Y_test, model))
 
     # Plot loss
-    plt.figure(figsize=(20, 8))
-    plt.subplot(1, 2, 1)
-    plt.ylim([0.1, .5])
+    plt.figure(figsize=(10, 8))
+    plt.ylim([0.0, .5])
     utils.plot_loss(train_loss, "Training Loss")
     utils.plot_loss(val_loss, "Validation Loss")
     plt.xlabel("Number of gradient steps")
     plt.ylabel("Cross Entropy Loss")
     plt.legend()
-    plt.subplot(1, 2, 2)
-    # Plot accuracy
-    plt.ylim([0.9, 1.0])
-    utils.plot_loss(train_accuracy, "Training Accuracy")
-    utils.plot_loss(val_accuracy, "Validation Accuracy")
-    plt.legend()
-    plt.xlabel("Number of gradient steps")
-    plt.ylabel("Accuracy")
-    plt.savefig("softmax_train_graph.png")
+    plt.savefig("softmax_train_task4b.png")
+
+    last_train_loss = train_loss.copy()
+    last_val_loss = val_loss.copy()
+
     plt.show()

@@ -52,24 +52,42 @@ class SoftmaxModel:
         # A hidden layer with 64 neurons and a output layer with 10 neurons.
         self.neurons_per_layer = neurons_per_layer
 
-        # Initialize the weights
+        # Initialize the weights and deltas
         self.ws = []
         self.delta_wt = []
+        self.deltas = []
+        #Initialize firs layer - input layer with dummy values
+        self.ws.append(np.ones(1))
+        self.delta_wt.append(np.ones(1))
+        self.deltas.append(np.ones(1))
+
         prev = self.I
         for size in self.neurons_per_layer:
             w_shape = (prev, size)
             print("Initializing weight to shape:", w_shape)
             w = np.zeros(w_shape)
             self.ws.append(w)
+            self.deltas.append(w.copy())
             self.delta_wt.append(w.copy())
+
             prev = size
+
         # Initializing the weights according to the use_improved_weight_init variable
         self.improved_weight_init() if self.use_improved_weight_init else self.weight_init()
 
         # Initialize lists of gradients, z-values and a-values(output).
+        # Treats the input layer as layer 0.
         self.grads = [None for i in range(len(self.ws))]
         self.z_vals = [None for i in range(len(self.ws))]
         self.a_vals = [None for i in range(len(self.ws))]
+
+        self.number_of_layers = len(neurons_per_layer) + 1
+
+        # initializing some values in the first layer numpy 1x1 array with zeros.
+        # This layer coresponds to the input layer
+        self.grads[0] = np.ones((1))
+        self.z_vals[0] = np.ones((1))
+
 
 
 
@@ -82,12 +100,17 @@ class SoftmaxModel:
         """
 
         # Calculating the output of each layer
-        self.z_vals[0] = np.dot(X, self.ws[0])
-        self.a_vals[0] = self.improved_sigmoid(self.z_vals[0]) if self.use_improved_sigmoid else self.sigmoid(self.z_vals[0])
-        self.z_vals[1] = np.dot(self.a_vals[0], self.ws[1])
-        self.a_vals[1] = self.softmax(self.z_vals[1])
+        self.a_vals[0] = X
 
-        y = self.a_vals[1]
+        for i in range(1, self.number_of_layers -1):
+            self.z_vals[i] = np.dot(self.a_vals[i-1], self.ws[i])
+            self.a_vals[i] = self.improved_sigmoid(self.z_vals[i]) if self.use_improved_sigmoid else self.sigmoid(self.z_vals[i])
+
+        # final layer
+        self.z_vals[-1] = np.dot(self.a_vals[-2], self.ws[-1])
+        self.a_vals[-1] = self.softmax(self.z_vals[-1])
+
+        y = self.a_vals[-1]
 
         return y
 
@@ -105,15 +128,20 @@ class SoftmaxModel:
         # For example, self.grads[0] will be the gradient for the first hidden layer
 
         # output layer grads
-        delta_k = -(targets-outputs)
-        self.grads[1] = np.dot(self.a_vals[0].T, delta_k)/(X.shape[0]) # shape (10,64)
+        self.deltas[-1] = -(targets-outputs)
+        self.grads[-1] = np.dot(self.a_vals[-2].T, self.deltas[-1])/(X.shape[0])
 
         # hidden layer grads
-        delta_j =  (np.dot(delta_k, self.ws[1].T))*self.slope_sigmoid(self.z_vals[0]) if self.use_improved_sigmoid \
-                   else (np.dot(delta_k, self.ws[1].T))*(-self.a_vals[0]*(self.a_vals[0]-1))
-        self.grads[0] = np.dot(X.T, delta_j)/(X.shape[0])
+        for i in range(2, self.number_of_layers):
+            # Using different derivative for improved sigmoid
+            if self.use_improved_sigmoid:
+                self.deltas[-i] = (np.dot(self.deltas[-i+1], self.ws[-i+1].T)*self.slope_sigmoid(self.z_vals[-i]))
+            else:
+                self.deltas[-i] = (np.dot(self.deltas[-i+1], self.ws[-i+1].T))*(-self.a_vals[1-i]*(self.a_vals[1-i]-1))
+            #update grads
+            self.grads[-i] = np.dot(self.a_vals[-i-1].T, self.deltas[-i])/(X.shape[0])
 
-        for grad, w in zip(self.grads, self.ws):
+        for grad, w in zip(self.grads[1:], self.ws[1:]):
             assert grad.shape == w.shape,\
                 f"Expected the same shape. Grad shape: {grad.shape}, w: {w.shape}."
 
@@ -121,21 +149,20 @@ class SoftmaxModel:
         self.grads = [None for i in range(len(self.ws))]
 
     def update_weights(self, learning_rate):
-        self.ws[0] -= learning_rate*self.grads[0]
-        self.ws[1] -= learning_rate*self.grads[1]
+        self.ws -= learning_rate*self.grads
 
     def update_weights_momentum(self, learning_rate:float, momentum_gamma:float):
-        self.delta_wt[0] = (learning_rate*self.grads[0] + momentum_gamma*self.delta_wt[0])
-        self.delta_wt[1] = (learning_rate*self.grads[1] + momentum_gamma*self.delta_wt[1])
-        self.ws[0] -= self.delta_wt[0]
-        self.ws[1] -= self.delta_wt[1]
+        for i in range(len(self.delta_wt)):
+            self.delta_wt[i] = (learning_rate*self.grads[i] + momentum_gamma*self.delta_wt[i])
+            self.ws[i] -= self.delta_wt[i]
 
     def weight_init(self):
-        self.ws[0] = np.random.uniform(-1, 1, self.ws[0].shape)
-        self.ws[1] = np.random.uniform(-1, 1, self.ws[1].shape)
+        for i in range(len(self.ws)):
+            self.ws[i] = np.random.uniform(-1, 1, self.ws[i].shape)
+
     def improved_weight_init(self):
-        self.ws[0] = np.random.normal(loc=0, scale=(1/np.sqrt(self.ws[0].shape[0])), size=self.ws[0].shape)
-        self.ws[1] = np.random.normal(loc=0, scale=(1/np.sqrt(self.ws[1].shape[0])), size=self.ws[1].shape)
+        for i in range(len(self.ws)):
+            self.ws[i] = np.random.normal(loc=0, scale=(1/np.sqrt(self.ws[i].shape[0])), size=self.ws[i].shape)
 
     def sigmoid(self, z: np.ndarray) -> np.ndarray:
         return 1.0/(1 + np.exp(-z))
@@ -215,7 +242,7 @@ if __name__ == "__main__":
     assert X_train.shape[1] == 785,\
         f"Expected X_train to have 785 elements per image. Shape was: {X_train.shape}"
 
-    neurons_per_layer = [64, 10]
+    neurons_per_layer = [32, 16, 10]
     use_improved_sigmoid = False
     use_improved_weight_init = False
     model = SoftmaxModel(
