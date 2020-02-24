@@ -193,6 +193,7 @@ def gradient_approximation_test(
                     model.grads[layer_idx][i, j]
                 assert abs(difference) <= epsilon**2,\
                     f"Calculated gradient is incorrect. " \
+                    f"Layer IDX = {layer_idx}, i={i}, j={j}.\n" \
                     f"Approximation: {gradient_approximation}, actual gradient: {model.grads[layer_idx][i, j]}\n" \
                     f"If this test fails there could be errors in your cross entropy loss function, " \
                     f"forward function or backward function"
@@ -220,16 +221,11 @@ if __name__ == "__main__":
     use_improved_weight_init = False
     model = SoftmaxModel(
         neurons_per_layer, use_improved_sigmoid, use_improved_weight_init)
-    logits = model.forward(X_train)
-    np.testing.assert_almost_equal(
-        logits.mean(), 1/10,
-        err_msg="Since the weights are all 0's, the softmax activation should be 1/10")
 
     # Gradient approximation check for 100 images
     X_train = X_train[:100]
     Y_train = Y_train[:100]
-    for i in range(2):
-        if i != 0:
-            gradient_approximation_test(model, X_train, Y_train)
-        model.ws = [np.random.randn(*w.shape) for w in model.ws]
-#        model.w = np.random.randn(*model.w.shape)
+    for layer_idx, w in enumerate(model.ws):
+        model.ws[layer_idx] = np.random.uniform(-1, 1, size=w.shape)
+
+    gradient_approximation_test(model, X_train, Y_train)
