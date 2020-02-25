@@ -25,7 +25,7 @@ def compute_loss_and_accuracy(
     """
     average_loss = 0
     accuracy = 0
-
+    count = 0
     with torch.no_grad():
         for (X_batch, Y_batch) in dataloader:
             # Transfer images/labels to GPU VRAM, if possible
@@ -34,7 +34,14 @@ def compute_loss_and_accuracy(
             # Forward pass the images through our model
             output_probs = model(X_batch)
 
+            average_loss += loss_criterion(output_probs, Y_batch);
+            accuracy += 0
+
             # Compute Loss and Accuracy
+            count += 1
+
+    average_loss = average_loss/count
+    accuracy = accuracy/count
 
     return average_loss, accuracy
 
@@ -52,6 +59,7 @@ class ExampleModel(nn.Module):
         """
         super().__init__()
         num_filters = 32  # Set number of filters in first conv layer
+
         self.num_classes = num_classes
         # Define the convolutional layers
         self.feature_extractor = nn.Sequential(
@@ -61,6 +69,30 @@ class ExampleModel(nn.Module):
                 kernel_size=5,
                 stride=1,
                 padding=2
+            ),
+            nn.MaxPool2D(
+                kernel_size=2,
+                stride=2
+            ),
+            nn.Conv2d(
+                out_channels=64,
+                kernel_size=5,
+                stride=1,
+                padding=2
+            ),
+            nn.MaxPool2D(
+                kernel_size=2,
+                stride=2
+            ),
+            nn.Conv2d(
+                out_channels=128,
+                kernel_size=5,
+                stride=1,
+                padding=2
+            ),
+            nn.MaxPool2D(
+                kernel_size=2,
+                stride=2
             )
         )
         # The output of feature_extractor will be [batch_size, num_filters, 16, 16]
@@ -80,6 +112,8 @@ class ExampleModel(nn.Module):
         Args:
             x: Input image, shape: [batch_size, 3, 32, 32]
         """
+        x = self.feature_extractor(x)
+        x = self.classifier(x)
         batch_size = x.shape[0]
         out = x
         expected_shape = (batch_size, self.num_classes)
